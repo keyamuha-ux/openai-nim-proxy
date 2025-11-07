@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YaezoCloud - LLM API Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .master-key {
+            background: #2c3e50;
+            color: #00ff88;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .step {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .step-number {
+            background: #3498db;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+
+        .api-test {
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .copy-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .tab-container {
+            margin-top: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>YaezoCloud</h1>
+            <p>Unified API Gateway for LLM Providers</p>
+        </div>
+
+        <div class="content">
+            <div class="step">
+                <h3><span class="step-number">1</span>Configure Your LLM Provider</h3>
+                <form id="configForm">
+                    <div class="form-group">
+                        <label for="provider">LLM Provider</label>
+                        <select id="provider" required>
+                            <option value="">Select a provider</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="cohere">Cohere</option>
+                            <option value="custom">Custom Provider</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apiEndpoint">API Endpoint</label>
+                        <input type="url" id="apiEndpoint" required 
+                               placeholder="https://api.openai.com/v1/chat/completions">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" required 
+                               placeholder="Enter your provider API key">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customHeaders">Custom Headers (JSON, optional)</label>
+                        <textarea id="customHeaders" rows="3" 
+                                  placeholder='{"X-Custom-Header": "value"}'></textarea>
+                    </div>
+
+                    <button type="submit" class="btn">Generate Master Key</button>
+                </form>
+            </div>
+
+            <div id="resultSection" class="hidden">
+                <div class="step">
+                    <h3><span class="step-number">2</span>Your Master Key</h3>
+                    <div class="result">
+                        <p>Your YaezoCloud master key has been generated. Use this key to access your LLM provider through our gateway:</p>
+                        <div id="masterKeyDisplay" class="master-key"></div>
+                        <button onclick="copyToClipboard()" class="copy-btn">Copy Master Key</button>
+                        
+                        <div class="tab-container">
+                            <div class="tabs">
+                                <div class="tab active" onclick="switchTab('usage')">API Usage</div>
+                                <div class="tab" onclick="switchTab('test')">Test API</div>
+                                <div class="tab" onclick="switchTab('nodejs')">Node.js</div>
+                                <div class="tab" onclick="switchTab('python')">Python</div>
+                            </div>
+                            
+                            <div id="usage" class="tab-content active">
+                                <h4>cURL Example:</h4>
+                                <pre><code id="curlExample"></code></pre>
+                            </div>
+                            
+                            <div id="test" class="tab-content">
+                                <h4>Test Your API</h4>
+                                <div class="form-group">
+                                    <label for="testMessage">Message</label>
+                                    <textarea id="testMessage" rows="3" placeholder="Enter your test message">Hello! How are you?</textarea>
+                                </div>
+                                <button onclick="testAPI()" class="btn">Send Test Request</button>
+                                <div id="testResult" class="result hidden"></div>
+                            </div>
+                            
+                            <div id="nodejs" class="tab-content">
+                                <h4>Node.js Example:</h4>
+                                <pre><code id="nodeExample"></code></pre>
+                            </div>
+                            
+                            <div id="python" class="tab-content">
+                                <h4>Python Example:</h4>
+                                <pre><code id="pythonExample"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Server-side JavaScript (would run on Node.js)
+        const serverCode = `
+            const express = require('express');
+            const cors = require('cors');
+            const crypto = require('crypto');
+            const axios = require('axios');
+            const rateLimit = require('express-rate-limit');
+
+            const app = express();
+            const PORT = process.env.PORT || 3000;
+
+            // Middleware
+            app.use(cors());
+            app.use(express.json());
+            app.use(express.static('.'));
+
+            // In-memory storage (use a database in production)
+            const userConfigs = new Map();
+            const masterKeys = new Map();
+
+            // Rate limiting
+            const limiter = rateLimit({
+                windowMs: 15 * 60 * 1000,
+                max: 100
+            });
+            app.use(limiter);
+
+            // Generate master key
+            function generateMasterKey() {
+                return 'yaezo_' + crypto.randomBytes(32).toString('hex');
+            }
+
+            // Endpoint to register a new LLM provider configuration
+            app.post('/v1/register', (req, res) => {
+                try {
+                    const { provider, apiEndpoint, apiKey, customHeaders } = req.body;
+                    
+                    if (!provider || !apiEndpoint || !apiKey) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Provider, API endpoint, and API key are required'
+                        });
+                    }
+
+                    const masterKey = generateMasterKey();
+                    
+                    userConfigs.set(masterKey, {
+                        provider,
+                        apiEndpoint,
+                        apiKey,
+                        customHeaders: customHeaders || {},
+                        createdAt: new Date()
+                    });
+
+                    masterKeys.set(masterKey, true);
+
+                    res.json({
+                        success: true,
+                        masterKey,
+                        message: 'Configuration registered successfully',
+                        details: {
+                            provider,
+                            apiEndpoint,
+                            createdAt: new Date().toISOString()
+                        }
+                    });
+                } catch (error) {
+                    res.status(500).json({
+                        success: false,
+                        message: 'Internal server error'
+                    });
+                }
+            });
+
+            // Main chat completions endpoint
+            app.post('/v1/chat/completions', async (req, res) => {
+                try {
+                    const masterKey = req.headers['authorization']?.replace('Bearer ', '');
+                    
+                    if (!masterKey || !masterKeys.has(masterKey)) {
+                        return res.status(401).json({
+                            success: false,
+                            message: 'Invalid or missing master key'
+                        });
+                    }
+
+                    const config = userConfigs.get(masterKey);
+                    if (!config) {
+                        return res.status(404).json({
+                            success: false,
+                            message: 'Configuration not found'
+                        });
+                    }
+
+                    const response = await axios({
+                        method: 'POST',
+                        url: config.apiEndpoint,
+                        headers: {
+                            'Authorization': 'Bearer ' + config.apiKey,
+                            'Content-Type': 'application/json',
+                            ...config.customHeaders
+                        },
+                        data: req.body,
+                        timeout: 30000
+                    });
+
+                    res.json(response.data);
+
+                } catch (error) {
+                    console.error('Proxy error:', error.message);
+                    
+                    if (error.response) {
+                        res.status(error.response.status).json(error.response.data);
+                    } else if (error.request) {
+                        res.status(504).json({
+                            success: false,
+                            message: 'Timeout connecting to LLM provider'
+                        });
+                    } else {
+                        res.status(500).json({
+                            success: false,
+                            message: 'Internal server error'
+                        });
+                    }
+                }
+            });
+
+            // Get configuration info
+            app.get('/v1/config', (req, res) => {
+                const masterKey = req.headers['authorization']?.replace('Bearer ', '');
+                
+                if (!masterKey || !masterKeys.has(masterKey)) {
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Invalid master key'
+                    });
+                }
+
+                const config = userConfigs.get(masterKey);
+                if (!config) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Configuration not found'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    provider: config.provider,
+                    apiEndpoint: config.apiEndpoint,
+                    createdAt: config.createdAt
+                });
+            });
+
+            // Health check
+            app.get('/health', (req, res) => {
+                res.json({
+                    success: true,
+                    message: 'YaezoCloud API is running',
+                    timestamp: new Date().toISOString()
+                });
+            });
+
+            app.listen(PORT, () => {
+                console.log('YaezoCloud API running on port ' + PORT);
+            });
+        `;
+
+        // Package.json content
+        const packageJson = {
+            name: "yaezocloud-api",
+            version: "1.0.0",
+            description: "LLM API Gateway",
+            main: "server.js",
+            scripts: {
+                start: "node server.js",
+                dev: "nodemon server.js"
+            },
+            dependencies: {
+                express: "^4.18.2",
+                cors: "^2.8.5",
+                axios: "^1.6.0",
+                "express-rate-limit": "^7.1.5"
+            }
+        };
+
+        // Client-side JavaScript
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                provider: document.getElementById('provider').value,
+                apiEndpoint: document.getElementById('apiEndpoint').value,
+                apiKey: document.getElementById('apiKey').value,
+                customHeaders: document.getElementById('customHeaders').value ? 
+                    JSON.parse(document.getElementById('customHeaders').value) : {}
+            };
+
+            try {
+                const response = await fetch('/v1/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const masterKey = result.masterKey;
+                    document.getElementById('masterKeyDisplay').textContent = masterKey;
+                    document.getElementById('resultSection').classList.remove('hidden');
+                    
+                    // Update code examples with the actual master key
+                    updateCodeExamples(masterKey);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error connecting to server. Make sure the backend is running.');
+            }
+        });
+
+        function updateCodeExamples(masterKey) {
+            // cURL example
+            document.getElementById('curlExample').textContent = 
+`curl -X POST https://yaezocloud.beta/v1/chat/completions \\\\
+  -H "Authorization: Bearer ${masterKey}" \\\\
+  -H "Content-Type: application/json" \\\\
+  -d '{
+    "model": "gpt-3.5-turbo",
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'`;
+
+            // Node.js example
+            document.getElementById('nodeExample').textContent = 
+`const axios = require('axios');
+
+async function chatWithAI() {
+    try {
+        const response = await axios.post(
+            'https://yaezocloud.beta/v1/chat/completions',
+            {
+                model: "gpt-3.5-turbo",
+                messages: [
+                    {role: "user", content: "Hello!"}
+                ]
+            },
+            {
+                headers: {
+                    'Authorization': 'Bearer ${masterKey}',
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        console.log(response.data);
+    } catch (error) {
+        console.error('Error:', error.response?.data || error.message);
+    }
+}
+
+chatWithAI();`;
+
+            // Python example
+            document.getElementById('pythonExample').textContent = 
+`import requests
+
+url = "https://yaezocloud.beta/v1/chat/completions"
+headers = {
+    "Authorization": "Bearer ${masterKey}",
+    "Content-Type": "application/json"
+}
+data = {
+    "model": "gpt-3.5-turbo",
+    "messages": [
+        {"role": "user", "content": "Hello!"}
+    ]
+}
+
+response = requests.post(url, json=data, headers=headers)
+print(response.json())`;
+        }
+
+        function copyToClipboard() {
+            const masterKey = document.getElementById('masterKeyDisplay').textContent;
+            navigator.clipboard.writeText(masterKey).then(() => {
+                alert('Master key copied to clipboard!');
+            });
+        }
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Activate selected tab
+            event.target.classList.add('active');
+        }
+
+        async function testAPI() {
+            const masterKey = document.getElementById('masterKeyDisplay').textContent;
+            const message = document.getElementById('testMessage').value;
+            const testResult = document.getElementById('testResult');
+
+            testResult.classList.add('hidden');
+            testResult.innerHTML = 'Sending request...';
+
+            try {
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + masterKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            {role: "user", content: message}
+                        ],
+                        max_tokens: 150
+                    })
+                });
+
+                const result = await response.json();
+                
+                testResult.classList.remove('hidden');
+                if (result.choices && result.choices[0]) {
+                    testResult.innerHTML = '<strong>Response:</strong><br>' + 
+                        result.choices[0].message.content;
+                } else {
+                    testResult.innerHTML = '<strong>Error:</strong><br>' + 
+                        JSON.stringify(result, null, 2);
+                }
+            } catch (error) {
+                testResult.classList.remove('hidden');
+                testResult.innerHTML = '<strong>Error:</strong> ' + error.message;
+            }
+        }
+
+        // Pre-fill endpoints based on provider selection
+        document.getElementById('provider').addEventListener('change', (e) => {
+            const endpointField = document.getElementById('apiEndpoint');
+            switch(e.target.value) {
+                case 'openai':
+                    endpointField.value = 'https://api.openai.com/v1/chat/completions';
+                    break;
+                case 'anthropic':
+                    endpointField.value = 'https://api.anthropic.com/v1/messages';
+                    break;
+                case 'cohere':
+                    endpointField.value = 'https://api.cohere.ai/v1/chat';
+                    break;
+                case 'custom':
+                    endpointField.value = '';
+                    break;
+            }
+        });
+
+        // Display server setup instructions
+        console.log('=== YaezoCloud Setup Instructions ===');
+        console.log('1. Save this file as "index.html"');
+        console.log('2. Create a "server.js" file with the following content:');
+        console.log(serverCode);
+        console.log('3. Create "package.json" with:');
+        console.log(JSON.stringify(packageJson, null, 2));
+        console.log('4. Run: npm install');
+        console.log('5. Run: node server.js');
+        console.log('6. Visit: http://localhost:3000');
+    </script>
+</body>
+</html>
